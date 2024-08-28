@@ -1,13 +1,59 @@
-from flask import Flask, request, url_for, redirect, render_template, flash
-import pandas as pd
+from functools import wraps
+import logging
+
 import numpy as np
-import pickle
+from flask import Flask, request, url_for, redirect, render_template, flash
+from pydantic import ValidationError
+
 from model_training import load_model
+from config import SECRET_KEY
+from validation import IrisInput
+
+logging.basicConfig(
+    filename="app.log",
+    encoding="utf-8",
+    filemode="a",
+    format="{asctime} - {levelname} - {message}",
+    style="{",
+    datefmt="%Y-%m-%d %H:%M",
+    level=logging.DEBUG,
+)
+
+flask_logger = logging.getLogger("werkzeug")
+flask_logger.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-app.secret_key = "a76d51c947e7fb2e1a265906ad475761"
+app.secret_key = SECRET_KEY
 
 model = load_model("model.pkl")
+logging.info("Model loaded successfully.")
+
+
+def validate_iris_input(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            data = IrisInput(
+                sepal_length=float(request.form["sepal_length"]),
+                sepal_width=float(request.form["sepal_width"]),
+                petal_length=float(request.form["petal_length"]),
+                petal_width=float(request.form["petal_width"]),
+            )
+            logging.debug(f"Validated input: {data}")
+        except (ValueError, ValidationError) as e:
+            for error in e.errors():
+                field = error.get("loc", ["unknown"])[0]
+                msg = error.get("msg", "Invalid input")
+
+                formatted_messgae = f"{field}: {msg}"
+                flash(formatted_messgae)
+                logging.warning(f"Validation error: {formatted_messgae}")
+
+            return redirect(url_for("home"))
+
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 @app.route("/")
@@ -16,36 +62,28 @@ def home():
 
 
 @app.route("/classify", methods=["POST", "GET"])
+@validate_iris_input
 def classify():
     sepal_length = float(request.form["sepal_length"])
     sepal_width = float(request.form["sepal_width"])
     petal_length = float(request.form["petal_length"])
     petal_width = float(request.form["petal_width"])
 
-    if not (4.0 <= sepal_length <= 8.0):
-        flash("Sepal length must be between 4.0 and 8.0 cm.")
-        return redirect(url_for("home"))
-    if not (2.0 <= sepal_width <= 4.5):
-        flash("Sepal width must be between 2.0 and 4.5 cm.")
-        return redirect(url_for("home"))
-    if not (1.0 <= petal_length <= 7.0):
-        flash("Petal length must be between 1.0 and 7.0 cm.")
-        return redirect(url_for("home"))
-    if not (0.1 <= petal_width <= 2.5):
-        flash("Petal width must be between 0.1 and 2.5 cm.")
-        return redirect(url_for("home"))
-
     input = np.array([[sepal_length, sepal_width, petal_length, petal_width]])
 
     output = model.predict(input)
+    logging.info(f"Prediction made with input {input}: {output}")
 
     if output.item() == 0:
-        return render_template("home.html", pred="Setosa")
+        prediction = "Setosa"
     elif output.item() == 1:
-        return render_template("home.html", pred="Versicolor")
+        prediction = "Versicolor"
     else:
-        return render_template("home.html", pred="Virginica")
+        prediction = "Virginica"
+
+    logging.debug(f"Prediction result: {prediction}")
+    return render_template("home.html", pred=prediction)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=8000)
