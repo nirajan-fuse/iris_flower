@@ -25,13 +25,7 @@ def save_model(model, model_name="model.pkl"):
 
 def load_model(model_name="model.pkl"):
     file_path = "./model/" + model_name
-    try:
-        loaded_model = pickle.load(open(file_path, "rb"))
-        print(f"Model loaded from {file_path}")
-    except (FileNotFoundError, IOError):
-        print(f"Model not found. Training a new model.")
-        loaded_model = train_iris_model()
-        save_model(loaded_model, model_name)
+    loaded_model = pickle.load(open(file_path, "rb"))
     return loaded_model
 
 
