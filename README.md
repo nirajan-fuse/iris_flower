@@ -17,6 +17,9 @@ SECRET_KEY=<your_secret_key>
 ```
 
 ### 3. Run 'model_training.py' to train the model.
+```terminal
+python model_training.py
+```
 
 ### 4. Use Docker Compose to build the Docker image and start the container:
 ```terminal
