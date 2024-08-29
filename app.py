@@ -1,13 +1,17 @@
+import os
 from functools import wraps
 import logging
 
 import numpy as np
 from flask import Flask, request, url_for, redirect, render_template, flash
 from pydantic import ValidationError
+from dotenv import load_dotenv
 
 from model_training import load_model
-from config import SECRET_KEY
 from validation import IrisInput
+
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 logging.basicConfig(
     filename="app.log",
@@ -25,8 +29,12 @@ flask_logger.setLevel(logging.ERROR)
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
-model = load_model("model.pkl")
-logging.info("Model loaded successfully.")
+try:
+    model = load_model("model.pkl")
+    logging.info("Model loaded successfully.")
+except FileNotFoundError as e:
+    logging.error(e)
+    raise SystemExit("Exiting program due to missing model file.")
 
 
 def validate_iris_input(func):
@@ -86,4 +94,4 @@ def classify():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8000)
+    app.run(debug=True, host="0.0.0.0", port=8000)
