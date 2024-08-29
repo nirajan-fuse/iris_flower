@@ -12,12 +12,18 @@ print(secret_key)
 ```
 
 ### 2. Save secret key in .env file:
+```.env
 SECRET_KEY=<your_secret_key>
+```
 
 ### 3. Run 'model_training.py' to train the model.
 
 ### 4. Use Docker Compose to build the Docker image and start the container:
+```terminal
 docker-compose up -d
+```
 
 #### 5. After the container is running, you can access the Flask application at:
+```terminal
 http://localhost:8000
+```
